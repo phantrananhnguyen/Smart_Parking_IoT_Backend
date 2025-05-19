@@ -7,6 +7,7 @@ const qrRoutes = require("./routes/qr"); // Import router đúng cách
 const License_plate = require("./routes/putLicense");
 const Admin = require("./routes/Admin");
 const Authen = require("./routes/Authen");
+const espRoute = require("./routes/esp");
 const app = express();
 connectDB();
 app.use(express.json());
@@ -16,5 +17,6 @@ app.use("/api/qr", qrRoutes); // Đặt route đúng cách
 app.use("/api/put", License_plate);
 app.use("/api/admin", Admin);
 app.use("/api/user", Authen);
+app.use("/api/esp", espRoute);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
