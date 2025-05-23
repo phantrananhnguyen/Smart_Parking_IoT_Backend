@@ -16,6 +16,7 @@
         "express": "^4.21.2",
         "jsonwebtoken": "^9.0.2",
         "mongoose": "^8.14.2",
+        "morgan": "^1.10.0",
         "node-webcam": "^0.8.2",
         "qrcode": "^1.5.4",
         "tesseract.js": "^6.0.1",
