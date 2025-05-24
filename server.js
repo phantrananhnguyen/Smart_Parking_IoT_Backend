@@ -4,6 +4,8 @@ const morgan = require("morgan"); // <-- Thêm ở đây
 const path = require("path");
 const connectDB = require("./config/db");
 require("dotenv").config();
+const http = require("http");
+
 const mongoose = require("mongoose");
 
 // Import routes
@@ -11,9 +13,9 @@ const qrRoutes = require("./routes/qr");
 const License_plate = require("./routes/putLicense");
 const Admin = require("./routes/Admin");
 const Authen = require("./routes/Authen");
-const espRoute = require("./routes/esp");
 
 const app = express(); // <-- Khởi tạo app TRƯỚC khi sử dụng
+const server = http.createServer(app);
 
 // Connect to DB
 connectDB();
@@ -29,7 +31,6 @@ app.use("/api/qr", qrRoutes);
 app.use("/api/put", License_plate);
 app.use("/api/admin", Admin);
 app.use("/api/user", Authen);
-app.use("/api/esp", espRoute);
 
 // Default error handlers (tuỳ chọn)
 app.use((req, res) => {
@@ -39,7 +40,9 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Server error" });
 });
+const setupEspWebSocket = require("./routes/esp");
+setupEspWebSocket(server);
 
-// Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(3000, () => {
+  console.log("Server đang chạy tại http://localhost:3000");
+});

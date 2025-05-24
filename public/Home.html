@@ -372,6 +372,34 @@
         padding: 12px;
         min-height: 80px;
       }
+      .ticket-row-compact {
+        display: flex;
+        text-align: center;
+        background-color: #b2dfdb;
+      }
+
+      .ticket-row-compact > div {
+        flex: 1;
+        padding: 8px;
+        border-right: 1px solid #fff;
+      }
+
+      .ticket-row-compact > div:last-child {
+        border-right: none;
+      }
+
+      .ticket-subheader-compact {
+        display: flex;
+        background-color: #00796b;
+        color: white;
+        font-weight: bold;
+      }
+
+      .ticket-subheader-compact > div {
+        flex: 1;
+        padding: 10px;
+        text-align: center;
+      }
 
       .revenue-and-month-info {
         display: flex;
@@ -440,32 +468,61 @@
       }
 
       .month-table {
-        background: #008470;
-        border-radius: 8px;
-        overflow: hidden;
-        height: 100%;
+        width: 100%;
+      }
+
+      .month-header,
+      .month-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr 1fr; /* 5 cột đều nhau */
+        text-align: center;
+        padding: 8px 0;
       }
 
       .month-header {
-        background: #006b5a;
-        color: white;
-        padding: 12px;
-        display: grid;
-        grid-template-columns: 1fr 1.5fr 1.5fr 1fr 1fr;
-        gap: 1px;
-        font-size: 12px;
-        font-weight: 600;
-      }
-
-      .month-header div {
-        text-align: center;
-        padding: 6px 4px;
+        background-color: #00695c;
+        color: #fff;
+        font-weight: bold;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
       }
 
       .month-content {
-        background: #b8e6d9;
-        height: 180px;
-        padding: 12px;
+        background-color: #b2dfdb;
+        min-height: 200px;
+        padding: 8px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .month-content .ticket-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        background-color: rgba(255, 255, 255, 0.7);
+        padding: 8px 16px;
+        border-radius: 6px;
+        transition: background-color 0.2s ease;
+      }
+
+      .month-content .ticket-row:hover {
+        background-color: rgba(255, 255, 255, 0.9);
+      }
+
+      .month-content .ticket-row div {
+        text-align: center;
+        font-size: 14px;
+      }
+      .month-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        padding: 8px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        font-size: 14px;
+      }
+
+      .month-row div {
+        padding: 4px 8px;
       }
 
       @media (max-width: 1024px) {
@@ -652,7 +709,10 @@
                   <div>Time</div>
                   <div>Expiry date</div>
                 </div>
-                <div class="ticket-content-compact"></div>
+                <div
+                  class="ticket-content-compact"
+                  id="month-tickets-content"
+                ></div>
               </div>
             </div>
           </div>
@@ -692,224 +752,13 @@
                 <div>Time in</div>
                 <div>Status</div>
               </div>
-              <div class="month-content"></div>
+              <div class="month-content" id="month-tickets-information"></div>
             </div>
           </div>
         </div>
       </main>
     </div>
 
-    <script>
-      function updateCounts() {
-        const allSpots = document.querySelectorAll(
-          ".parking-spot:not(.locked)"
-        );
-        const inUseCount = [...allSpots].filter((spot) =>
-          spot.classList.contains("occupied")
-        ).length;
-        const availableCount = [...allSpots].filter((spot) =>
-          spot.classList.contains("available")
-        ).length;
-        const revenueCount = inUseCount * 5; // Ví dụ: 5 đơn vị doanh thu mỗi chỗ đang sử dụng
-
-        document.getElementById("count-in-use").textContent = inUseCount;
-        document.getElementById("count-available").textContent = availableCount;
-        document.getElementById("count-revenue").textContent = revenueCount;
-      }
-
-      function updateParkingStatus() {
-        const spots = document.querySelectorAll(".parking-spot:not(.locked)");
-        spots.forEach((spot) => {
-          if (Math.random() < 0.1) {
-            if (spot.classList.contains("occupied")) {
-              spot.classList.remove("occupied");
-              spot.classList.add("available");
-              spot.querySelector(".car-icon")?.remove();
-            } else if (spot.classList.contains("available")) {
-              spot.classList.remove("available");
-              spot.classList.add("occupied");
-              if (!spot.querySelector(".car-icon")) {
-                const carIcon = document.createElement("div");
-                carIcon.className = "car-icon";
-                spot.appendChild(carIcon);
-              }
-            }
-          }
-        });
-
-        // Cập nhật số lượng sau mỗi vòng thay đổi
-        updateCounts();
-      }
-
-      setInterval(updateParkingStatus, 5000);
-
-      document
-        .querySelector(".notification-icon")
-        .addEventListener("click", () => {
-          alert("Notifications clicked!");
-        });
-
-      document.querySelector(".admin-section").addEventListener("click", () => {
-        alert("Admin profile clicked!");
-      });
-
-      document.querySelector(".logout-icon").addEventListener("click", () => {
-        if (confirm("Bạn có chắc muốn đăng xuất?")) {
-          window.location.href = "login.html";
-        }
-      });
-
-      document.querySelectorAll(".parking-spot").forEach((spot) => {
-        spot.addEventListener("click", function () {
-          const spotName = this.getAttribute("data-spot");
-          const isLocked = this.classList.contains("locked");
-
-          if (isLocked) {
-            if (
-              confirm(`Ô ${spotName} đang bị khóa. Bạn có muốn mở khóa không?`)
-            ) {
-              this.classList.remove("locked");
-
-              if (this.querySelector(".car-icon")) {
-                this.classList.add("occupied");
-              } else {
-                this.classList.add("available");
-              }
-              alert(`Đã mở khóa ô ${spotName}`);
-            }
-          } else {
-            const result = confirm(
-              `Bạn có muốn khóa ô ${spotName} để bảo trì/thu phí không?`
-            );
-            if (result) {
-              this.classList.remove("occupied", "available");
-              this.classList.add("locked");
-              alert(`Đã khóa ô ${spotName} - Trạng thái: Bảo trì/Thu phí`);
-            }
-          }
-        });
-      });
-
-      const monthlyRevenueData = {
-        labels: [
-          "Tháng 1",
-          "Tháng 2",
-          "Tháng 3",
-          "Tháng 4",
-          "Tháng 5",
-          "Tháng 6",
-          "Tháng 7",
-          "Tháng 8",
-          "Tháng 9",
-          "Tháng 10",
-          "Tháng 11",
-          "Tháng 12",
-        ],
-        datasets: [
-          {
-            label: "Doanh thu (triệu VND)",
-            data: [3.5, 4.2, 2.8, 5.5, 4.8, 6.2, 7.0, 5.8, 7.5, 8.5, 9.2, 9.0],
-            backgroundColor: [
-              "#FF6B6B",
-              "#FF8E8E",
-              "#FF7575",
-              "#FF5252",
-              "#FF6B6B",
-              "#FF4444",
-              "#FF3333",
-              "#FF5555",
-              "#FF6666",
-              "#FF4444",
-              "#FF2222",
-              "#FF3333",
-            ],
-            borderColor: "#FF4444",
-            borderWidth: 1,
-            borderRadius: 4,
-            borderSkipped: false,
-          },
-        ],
-      };
-
-      const chartConfig = {
-        type: "bar",
-        data: monthlyRevenueData,
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              display: false,
-            },
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return `Doanh thu: ${context.parsed.y} triệu VND`;
-                },
-              },
-            },
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 10,
-              ticks: {
-                stepSize: 2,
-                callback: function (value) {
-                  return value + "M";
-                },
-                font: {
-                  size: 11,
-                },
-                color: "#666",
-              },
-              grid: {
-                color: "#e1e5e9",
-                drawBorder: false,
-              },
-            },
-            x: {
-              ticks: {
-                font: {
-                  size: 10,
-                },
-                color: "#666",
-                maxRotation: 45,
-              },
-              grid: {
-                display: false,
-              },
-            },
-          },
-          layout: {
-            padding: {
-              top: 10,
-              bottom: 5,
-            },
-          },
-          animation: {
-            duration: 1000,
-            easing: "easeOutQuart",
-          },
-        },
-      };
-
-      const ctx = document.getElementById("revenueChart").getContext("2d");
-      const revenueChart = new Chart(ctx, chartConfig);
-
-      function updateChartData() {
-        const data = revenueChart.data.datasets[0].data;
-        const newData = data.map((value) => {
-          const change = (Math.random() - 0.5) * 1.0;
-          const newValue = Math.max(0, Math.min(10, value + change));
-          return Math.round(newValue * 10) / 10;
-        });
-
-        revenueChart.data.datasets[0].data = newData;
-        revenueChart.update("none");
-      }
-
-      setInterval(updateChartData, 10000);
-    </script>
+    <script src="Home.js"></script>
   </body>
 </html>

@@ -4,9 +4,9 @@ const MonthTicket = require("../models/month_ticket");
 
 router.post("/month_ticket", async (req, res) => {
   try {
-    const { licensePlate, owner, car_company } = req.body;
+    const { licensePlate, owner,timein, outdateat, car_company } = req.body;
 
-    const newTicket = new MonthTicket({ licensePlate, owner, car_company });
+    const newTicket = new MonthTicket({ licensePlate, owner,timein, outdateat, car_company });
     await newTicket.save();
 
     res.status(201).json({ message: "Đã thêm xe tháng", data: newTicket });
