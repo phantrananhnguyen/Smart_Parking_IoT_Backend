@@ -1,0 +1,599 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: #f5f7fa;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-container {
+  background: white;
+  margin: 10px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 20px);
+}
+
+.header {
+  background: linear-gradient(135deg, #008470 0%, #015c62 100%);
+  color: white;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo svg {
+  width: 24px;
+  height: 24px;
+  fill: #008470;
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.notification-icon,
+.admin-section,
+.logout-icon {
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+}
+.log-section {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 0px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.log-section h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #333;
+}
+
+.log-content {
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 14px;
+  color: #444;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.notification-icon:hover,
+.admin-section:hover,
+.logout-icon:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-bar {
+  background: #f8f9fa;
+  padding: 10px 20px;
+  display: flex;
+  gap: 30px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.status-dot.in-use {
+  background-color: #ff4444;
+}
+.status-dot.available {
+  background-color: #44ff44;
+}
+.status-dot.revenue {
+  background-color: #ffaa44;
+}
+
+.main-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+  background: white;
+}
+
+.parking-and-cars {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  min-height: 250px;
+}
+
+.parking-layout {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+  flex: 1;
+  min-width: 300px;
+}
+
+.parking-section {
+  margin-bottom: 20px;
+}
+
+.parking-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #008470;
+  margin-bottom: 6px;
+  text-align: center;
+  padding: 3px 6px;
+  background: rgba(0, 132, 112, 0.1);
+  border-radius: 4px;
+  display: inline-block;
+  width: 100%;
+}
+
+.parking-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.parking-grid.khu-b {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 200px;
+}
+
+.parking-road {
+  height: 35px;
+  background: linear-gradient(to right, #bbb 0%, #999 50%, #bbb 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #555;
+  font-weight: 600;
+  margin: 15px 0;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.parking-road::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    #666 0px,
+    #666 12px,
+    transparent 12px,
+    transparent 24px
+  );
+}
+
+.parking-spot {
+  aspect-ratio: 1;
+  border: 1.5px solid #ddd;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #fff;
+  transition: all 0.3s;
+  font-size: 7px;
+  font-weight: 500;
+  color: #666;
+  gap: 1px;
+  width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.parking-spot:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.parking-spot.occupied {
+  background: #ffebee;
+  border-color: #ff4444;
+  color: #333;
+}
+
+.parking-spot.available {
+  background: #e8f5e8;
+  border-color: #44ff44;
+  color: #333;
+}
+
+.parking-spot.locked {
+  background: #fff3e0;
+  border-color: #ffaa44;
+  color: #333;
+}
+
+.parking-spot.locked::after {
+  content: "🔒";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 6px;
+}
+
+.car-icon {
+  width: 12px;
+  height: 8px;
+  background: #333;
+  border-radius: 1.5px;
+  position: relative;
+}
+
+.car-icon::before,
+.car-icon::after {
+  content: "";
+  position: absolute;
+  width: 1.5px;
+  height: 1.5px;
+  background: #666;
+  border-radius: 50%;
+  bottom: -1px;
+}
+
+.car-icon::before {
+  left: 1px;
+}
+.car-icon::after {
+  right: 1px;
+}
+
+.cars-in-park-compact {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+  flex: 1;
+  min-width: 250px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cars-title-compact {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #008470;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.tickets-section-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.ticket-table-compact {
+  background: #008470;
+  border-radius: 6px;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ticket-header-compact {
+  background: #006b5a;
+  color: white;
+  padding: 10px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.ticket-subheader-compact {
+  background: #008470;
+  color: white;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 1px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.ticket-subheader-compact2 {
+  background: #008470;
+  color: white;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.ticket-subheader-compact2 div {
+  text-align: center;
+  padding: 4px;
+}
+.ticket-subheader-compact div {
+  text-align: center;
+  padding: 4px;
+}
+
+.ticket-content-compact {
+  background: #b8e6d9;
+  flex: 1;
+  padding: 12px;
+  min-height: 80px;
+}
+.ticket-row-compact {
+  display: flex;
+  text-align: center;
+  background-color: #b2dfdb;
+}
+
+.ticket-row-compact > div {
+  flex: 1;
+  padding: 8px;
+  border-right: 1px solid #fff;
+}
+
+.ticket-row-compact > div:last-child {
+  border-right: none;
+}
+
+.ticket-subheader-compact {
+  display: flex;
+  background-color: #00796b;
+  color: white;
+  font-weight: bold;
+}
+
+.ticket-subheader-compact > div {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+}
+
+.revenue-and-month-info {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.revenue-chart,
+.month-info {
+  flex: 1 1 48%;
+  min-width: 300px;
+  min-height: 300px;
+}
+
+.revenue-chart {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.chart-title {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+}
+
+.chart-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.chart-container {
+  height: 220px;
+  position: relative;
+  background: #fff;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 10px;
+}
+
+.month-info {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+}
+
+.month-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #008470;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.month-table {
+  width: 100%;
+}
+
+.month-header,
+.month-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr; /* 5 cột đều nhau */
+  text-align: center;
+  padding: 8px 0;
+}
+
+.month-header {
+  background-color: #00695c;
+  color: #fff;
+  font-weight: bold;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.month-content {
+  background-color: #b2dfdb;
+  min-height: 200px;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.month-content .ticket-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.month-content .ticket-row:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.month-content .ticket-row div {
+  text-align: center;
+  font-size: 14px;
+}
+.month-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+}
+
+.month-row div {
+  padding: 4px 8px;
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 15px;
+  }
+
+  .dashboard-container {
+    margin: 5px;
+  }
+
+  .header {
+    padding: 10px 15px;
+  }
+
+  .status-bar {
+    padding: 8px 15px;
+    flex-wrap: wrap;
+  }
+
+  .parking-and-cars {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .revenue-and-month-info {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .revenue-chart,
+  .month-info {
+    flex: 1 1 100%;
+    min-width: auto;
+  }
+
+  .chart-container {
+    height: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    margin: 5px;
+    border-radius: 12px;
+  }
+
+  .app-title {
+    font-size: 1.2rem;
+  }
+
+  .parking-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .header-actions {
+    gap: 10px;
+  }
+}

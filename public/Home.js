@@ -6,11 +6,9 @@ function updateCounts() {
   const availableCount = [...allSpots].filter((spot) =>
     spot.classList.contains("available")
   ).length;
-  const revenueCount = inUseCount * 5;
 
   document.getElementById("count-in-use").textContent = inUseCount;
   document.getElementById("count-available").textContent = availableCount;
-  document.getElementById("count-revenue").textContent = revenueCount;
 }
 async function fetchParkingStatus() {
   try {
@@ -60,6 +58,9 @@ socket.onopen = () => {
       type: "dashboard",
     })
   );
+  socket.send(JSON.stringify({ event: "get_tickets" }));
+  socket.send(JSON.stringify({ event: "get_month_tickets" }));
+  socket.send(JSON.stringify({ event: "get_month_infor" }));
 };
 
 socket.onmessage = (event) => {
@@ -86,6 +87,44 @@ socket.onmessage = (event) => {
         if (icon) icon.remove();
       }
     }
+  }
+
+  // === Vé ngày (hiển thị + nút xác nhận) ===
+  else if (data.event === "tickets_data") {
+    renderTickets(data.tickets);
+  }
+
+  // === Vé tháng (ngày ra - ngày vào) ===
+  else if (data.event === "month_tickets_data") {
+    renderMonthTickets(data.tickets);
+  }
+
+  // === Vé tháng + chủ xe, công ty ===
+  else if (data.event === "month_info_data") {
+    renderMonthInfor(data.tickets);
+  }
+
+  // === Báo lỗi ===
+  else if (data.event === "error") {
+    alert(`Lỗi: ${data.message}`);
+  } else if (data.event === "plate_detected") {
+    console.log(`Xe vào: Biển số: ${data.plate}`);
+    const logContainer = document.getElementById("log-content");
+    const logEntry = document.createElement("div");
+    logEntry.textContent = `Xe vào: Biển số: ${
+      data.plate
+    } (${new Date().toLocaleString()})`;
+    logContainer.appendChild(logEntry);
+  } else if (data.event === "plate_detected_out") {
+    console.log(`Xe ra: Biển số: ${data.plate}`);
+  } else if (data.event === "vehicle_checked_out") {
+    const logContainer = document.getElementById("log-content");
+    const logEntry = document.createElement("div");
+    logEntry.textContent = `Xe ra: Biển số ${data.plate}, Thời gian: ${new Date(
+      data.checkOut
+    ).toLocaleString()}, Phí: ${data.fee} VND`;
+
+    logContainer.appendChild(logEntry);
   }
 };
 function sendMessage(eventName, payload = {}) {
@@ -227,101 +266,84 @@ function updateChartData() {
   revenueChart.update("none");
 }
 
-async function loadTickets() {
-  try {
-    const response = await fetch("http://localhost:3000/api/admin/tickets/day");
-    const tickets = await response.json();
+function renderTickets(tickets) {
+  const contentDiv = document.querySelector(".ticket-content-compact");
+  contentDiv.innerHTML = "";
 
-    const contentDiv = document.querySelector(".ticket-content-compact");
-    contentDiv.innerHTML = "";
+  tickets.forEach((ticket) => {
+    const row = document.createElement("div");
+    row.classList.add("ticket-row-compact");
+    row.style.display = "flex";
 
-    tickets.forEach((ticket) => {
-      const row = document.createElement("div");
-      row.classList.add("ticket-row-compact");
-      row.style.display = "flex";
-
-      row.innerHTML = `
-        <div>${ticket.plate}</div>
-        <div>${new Date(ticket.timeIn).toLocaleString()}</div>
-        <div>${
-          ticket.timeOut ? new Date(ticket.timeOut).toLocaleString() : "-"
-        }</div>
-        <div>
-          ${
-            ticket.timeOut && ticket.paymentStatus !== "Paid"
-              ? `<button class="pay-btn" onclick="confirmPayment('${ticket.plate}')">Xác nhận</button>`
-              : ticket.paymentStatus
-          }
-        </div>
-      `;
-      contentDiv.appendChild(row);
-    });
-  } catch (error) {
-    console.error("Error loading tickets:", error);
-  }
+    row.innerHTML = `
+      <div>${ticket.licensePlate}</div>
+      <div>${new Date(ticket.checkInTime).toLocaleString()}</div>
+      <div>${
+        ticket.checkOutTime
+          ? new Date(ticket.checkOutTime).toLocaleString()
+          : "-"
+      }</div>
+      <div>
+        ${
+          ticket.timeOut && ticket.paymentStatus !== "Paid"
+            ? `<button class="pay-btn" onclick="confirmPayment('${ticket.plate}')">Xác nhận</button>`
+            : "-"
+        }
+      </div>
+    `;
+    contentDiv.appendChild(row);
+  });
 }
 
-async function loadMonthTickets() {
-  try {
-    const response = await fetch("/api/admin/tickets/month");
-    const tickets = await response.json();
-    const contentDiv = document.getElementById("month-tickets-content");
+function renderMonthTickets(tickets) {
+  const contentDiv = document.getElementById("month-tickets-content");
+  contentDiv.innerHTML = "";
 
-    contentDiv.innerHTML = "";
+  tickets.forEach((ticket) => {
+    const row = document.createElement("div");
+    row.classList.add("ticket-row-compact");
 
-    tickets.forEach((ticket) => {
-      const row = document.createElement("div");
-      row.classList.add("ticket-row-compact");
-
-      row.innerHTML = `
-        <div>${ticket.plate}</div>
-        <div>${
-          ticket.timeIn ? new Date(ticket.timeIn).toLocaleString() : "-"
-        }</div>
-        <div>${
-          ticket.outdateat ? new Date(ticket.outdateat).toLocaleString() : "-"
-        }</div>
-      `;
-      contentDiv.appendChild(row);
-    });
-  } catch (error) {
-    console.error("Error loading month tickets:", error);
-  }
+    row.innerHTML = `
+      <div>${ticket.licensePlate}</div>
+      <div>${
+        ticket.timein ? new Date(ticket.timein).toLocaleString() : "-"
+      }</div>
+      <div>${
+        ticket.outdateat ? new Date(ticket.outdateat).toLocaleString() : "-"
+      }</div>
+    `;
+    contentDiv.appendChild(row);
+  });
 }
-async function loadMonthInfor() {
-  try {
-    const response = await fetch("/api/admin/tickets/month");
-    const tickets = await response.json();
-    const contentDiv = document.getElementById("month-tickets-information");
 
-    contentDiv.innerHTML = ""; // Xoá dữ liệu cũ
+function renderMonthInfor(tickets) {
+  const contentDiv = document.getElementById("month-tickets-information");
+  contentDiv.innerHTML = "";
 
-    tickets.forEach((ticket) => {
-      const row = document.createElement("div");
-      row.classList.add("month-row"); // Dùng class mới
+  tickets.forEach((ticket) => {
+    const row = document.createElement("div");
+    row.classList.add("month-row");
 
-      row.innerHTML = `
-        <div>${ticket.plate || "-"}</div>
-        <div>${ticket.owner || "-"}</div>
-        <div>${ticket.company || "-"}</div>
-        <div>${
-          ticket.timeIn ? new Date(ticket.timeIn).toLocaleString() : "-"
-        }</div>
-        <div>${
-          ticket.outdateat ? new Date(ticket.outdateat).toLocaleString() : "-"
-        }</div>
-      `;
-
-      contentDiv.appendChild(row);
-    });
-  } catch (error) {
-    console.error("Error loading month tickets:", error);
-  }
+    row.innerHTML = `
+      <div>${ticket.licensePlate || "-"}</div>
+      <div>${ticket.owner || "-"}</div>
+      <div>${ticket.car_company || "-"}</div>
+      <div>${
+        ticket.timein ? new Date(ticket.timein).toLocaleString() : "-"
+      }</div>
+      <div>${
+        ticket.outdateat ? new Date(ticket.outdateat).toLocaleString() : "-"
+      }</div>
+    `;
+    contentDiv.appendChild(row);
+  });
 }
 
 function confirmPayment(plate) {
   if (confirm(`Xác nhận đã thanh toán cho xe biển số ${plate}?`)) {
-    // Nếu có backend, bạn nên gọi fetch POST ở đây
+    sendMessage("payment_confirmed", {
+      plate: plate,
+    });
     alert(`Đã xác nhận thanh toán cho xe ${plate}`);
     location.reload();
   }
@@ -329,9 +351,6 @@ function confirmPayment(plate) {
 
 // ⏱️ Tự động cập nhật sau khi DOM sẵn sàng
 window.addEventListener("DOMContentLoaded", () => {
-  loadTickets();
-  loadMonthTickets();
-  loadMonthInfor();
   fetchParkingStatus();
   setInterval(loadTickets, 5000);
   setInterval(loadMonthTickets, 5000);

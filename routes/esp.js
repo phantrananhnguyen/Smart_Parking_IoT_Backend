@@ -18,6 +18,41 @@ const opts = {
 };
 
 let lastCommand = "none";
+// Thêm hàm nhận diện có retry
+async function recognizeWithRetry(imagePath, maxRetries = 5) {
+  let retries = 0;
+  while (retries < maxRetries) {
+    const form = new FormData();
+    form.append("image", fs.createReadStream(imagePath));
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5001/recognize",
+        form,
+        {
+          headers: form.getHeaders(),
+          timeout: 10000,
+        }
+      );
+
+      const plateNumber = response.data.plate || "";
+
+      console.log(`Lần thử ${retries + 1}: Nhận được biển:`, plateNumber);
+
+      if (plateNumber.trim() !== "") {
+        return plateNumber.toUpperCase().replace(/[-.\s]/g, "");
+      } else {
+        console.log("Biển không hợp lệ (rỗng), thử lại...");
+      }
+    } catch (err) {
+      console.log("Lỗi gọi API nhận diện:", err.message);
+    }
+
+    retries++;
+    await new Promise((res) => setTimeout(res, 500)); // delay 500ms
+  }
+  return null; // Không nhận được biển hợp lệ sau maxRetries
+}
 
 function setupEspWebSocket(server) {
   const wss = new WebSocket.Server({ server });
@@ -44,71 +79,160 @@ function setupEspWebSocket(server) {
         if (data.event === "detection") {
           console.log("[WS] ESP yêu cầu nhận diện biển số");
 
-          const imagePath = await new Promise((resolve, reject) => {
-            NodeWebcam.capture("plate", opts, (err, path) =>
-              err ? reject(err) : resolve(path)
-            );
-          });
+          try {
+            const imagePath = await new Promise((resolve, reject) => {
+              NodeWebcam.capture("plate", opts, (err, path) =>
+                err ? reject(err) : resolve(path)
+              );
+            });
 
-          const form = new FormData();
-          form.append("image", fs.createReadStream(imagePath));
+            // Gọi hàm nhận diện với retry
+            const normalizedPlate = await recognizeWithRetry(imagePath, 5);
 
-          const response = await axios.post(
-            "http://localhost:5001/recognize",
-            form,
-            {
-              headers: form.getHeaders(),
-              timeout: 10000,
+            if (!normalizedPlate) {
+              console.log(
+                "Không nhận diện được biển hợp lệ sau nhiều lần thử."
+              );
+              ws.send(
+                JSON.stringify({
+                  event: "error",
+                  message: "Không nhận diện được biển số hợp lệ",
+                })
+              );
+              return;
             }
-          );
 
-          const plateNumber = response.data.plate;
+            console.log("Biển số nhận diện:", normalizedPlate);
 
-          if (!plateNumber || plateNumber.trim() === "") {
-            console.log("Không nhận diện được biển.");
+            // Phần xử lý database như cũ
+            const isMonthVehicle = await monthTicket.findOne({
+              licensePlate: normalizedPlate,
+            });
+
+            if (isMonthVehicle) {
+              lastCommand = "rotate";
+              console.log("Xe tháng. Đặt lệnh: rotate");
+            } else {
+              const existing = await Parking.findOne({
+                licensePlate: normalizedPlate,
+                checkOutTime: null,
+              });
+
+              if (!existing) {
+                const newEntry = new Parking({ licensePlate: normalizedPlate });
+                await newEntry.save();
+                console.log("Xe ngày. Đã thêm mới vào DB.");
+              } else {
+                console.log("Xe ngày. Đã có bản ghi chưa check-out.");
+              }
+
+              lastCommand = "rotate";
+            }
+
+            // Gửi kết quả về dashboard
+            broadcastToDashboard({
+              event: "plate_detected",
+              plate: normalizedPlate,
+            });
+          } catch (error) {
+            console.error("Lỗi xử lý nhận diện:", error);
             ws.send(
               JSON.stringify({
                 event: "error",
-                message: "Không nhận diện được biển số",
+                message: "Lỗi server khi nhận diện biển số",
               })
             );
-            return;
           }
+        }
+        if (data.event === "detection_out") {
+          console.log("[WS] ESP yêu cầu nhận diện xe ra");
 
-          const normalizedPlate = plateNumber
-            .replace(/[-.\s]/g, "")
-            .toUpperCase();
-          console.log("Biển số nhận diện:", normalizedPlate);
-
-          const isMonthVehicle = await monthTicket.findOne({
-            licensePlate: normalizedPlate,
-          });
-
-          if (isMonthVehicle) {
-            lastCommand = "rotate";
-            console.log("Xe tháng. Đặt lệnh: rotate");
-          } else {
-            const existing = await Parking.findOne({
-              licensePlate: normalizedPlate,
-              checkOutTime: null,
+          try {
+            // Chụp ảnh biển số
+            const imagePath = await new Promise((resolve, reject) => {
+              NodeWebcam.capture("plate_out", opts, (err, path) =>
+                err ? reject(err) : resolve(path)
+              );
             });
 
-            if (!existing) {
-              const newEntry = new Parking({ licensePlate: normalizedPlate });
-              await newEntry.save();
-              console.log("Xe ngày. Đã thêm mới vào DB.");
-            } else {
-              console.log("Xe ngày. Đã có bản ghi chưa check-out.");
+            // Gọi hàm nhận diện với retry
+            const normalizedPlate = await recognizeWithRetry(imagePath, 5);
+
+            if (!normalizedPlate) {
+              console.log(
+                "Không nhận diện được biển hợp lệ sau nhiều lần thử."
+              );
+              ws.send(
+                JSON.stringify({
+                  event: "error",
+                  message: "Không nhận diện được biển số hợp lệ",
+                })
+              );
+              return;
             }
 
-            lastCommand = "rotate";
-          }
+            console.log("Biển số nhận diện (ra):", normalizedPlate);
 
-          // Gửi kết quả về dashboard
-          broadcastToDashboard({
-            event: "plate_detected",
-            plate: normalizedPlate,
-          });
+            // Kiểm tra nếu là xe tháng
+            const isMonthVehicle = await monthTicket.findOne({
+              licensePlate: normalizedPlate,
+            });
+
+            if (isMonthVehicle) {
+              lastCommand = "rotate";
+              console.log("Xe tháng. Cho xe ra.");
+            } else {
+              // Tìm bản ghi check-in chưa check-out
+              const existing = await Parking.findOne({
+                licensePlate: normalizedPlate,
+                checkOutTime: null,
+              });
+
+              if (existing) {
+                const now = new Date();
+                const checkInTime = new Date(existing.checkInTime);
+                const durationMs = now - checkInTime;
+                const durationHours = Math.ceil(durationMs / (1000 * 60 * 60)); // Làm tròn lên
+
+                const feePerHour = 5000; // phí mỗi giờ
+                const totalFee = durationHours * feePerHour;
+
+                existing.checkOutTime = now;
+                existing.fee = totalFee;
+                await existing.save();
+
+                console.log(
+                  `Xe ngày. Tính phí: ${totalFee} VND (${durationHours} giờ)`
+                );
+
+                // Gửi thông tin về dashboard
+                broadcastToDashboard({
+                  event: "vehicle_checked_out",
+                  plate: normalizedPlate,
+                  checkIn: checkInTime,
+                  checkOut: now,
+                  fee: totalFee,
+                });
+              } else {
+                console.log("Không tìm thấy bản ghi xe ngày phù hợp.");
+                ws.send(
+                  JSON.stringify({
+                    event: "error",
+                    message: "Không tìm thấy xe trong cơ sở dữ liệu",
+                  })
+                );
+                return;
+              }
+            }
+          } catch (error) {
+            console.error("Lỗi xử lý xe ra:", error);
+            ws.send(
+              JSON.stringify({
+                event: "error",
+                message: "Lỗi server khi xử lý xe ra",
+              })
+            );
+          }
         }
 
         // ESP gửi trạng thái chỗ đỗ
@@ -148,6 +272,66 @@ function setupEspWebSocket(server) {
             { upsert: true, new: true }
           );
         }
+        // Xử lý các sự kiện từ Dashboard
+        if (data.event === "get_tickets") {
+          const tickets = await Parking.find({ checkOutTime: null });
+          broadcastToDashboard({
+            event: "tickets_data",
+            tickets,
+          });
+        }
+
+        if (data.event === "get_month_tickets") {
+          const tickets = await monthTicket.find({});
+          broadcastToDashboard({
+            event: "month_tickets_data",
+            tickets,
+          });
+        }
+
+        if (data.event === "get_month_infor") {
+          const tickets = await monthTicket.find({});
+          broadcastToDashboard({
+            event: "month_info_data",
+            tickets,
+          });
+        }
+
+        if (data.event === "payment_confirmed") {
+          const { plate } = data;
+          const now = new Date();
+          const existing = await Parking.findOne({
+            licensePlate: plate,
+            checkOutTime: null,
+          });
+
+          if (existing) {
+            const durationMs = now - existing.checkInTime;
+            const durationHours = Math.ceil(durationMs / (1000 * 60 * 60));
+            const feePerHour = 5000;
+            const totalFee = durationHours * feePerHour;
+
+            // Cập nhật thông tin thanh toán trước khi xóa (nếu cần log)
+            existing.checkOutTime = now;
+            existing.fee = totalFee;
+            await existing.save();
+
+            // Xóa bản ghi sau khi thanh toán xong
+            await Parking.deleteOne({ _id: existing._id });
+
+            console.log(`Xóa xe ${plate} khỏi DB sau khi thanh toán.`);
+            // Gửi lệnh rotate cho ESP
+            lastCommand = "rotate";
+            ws.send(
+              JSON.stringify({ event: "command_response", command: "rotate" })
+            );
+          } else {
+            broadcastToDashboard({
+              event: "error",
+              message: `Không tìm thấy xe ${plate} trong hệ thống.`,
+            });
+          }
+        }
       } catch (err) {
         console.error("Lỗi khi xử lý WebSocket:", err.message);
       }
@@ -156,8 +340,6 @@ function setupEspWebSocket(server) {
 
   function broadcastToDashboard(message) {
     const json = JSON.stringify(message);
-    console.log(`[WS] Gửi đến ${dashboardClients.size} dashboard(s):`, json);
-
     dashboardClients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(json, (err) => {
