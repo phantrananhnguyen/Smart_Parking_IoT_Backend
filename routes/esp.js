@@ -340,6 +340,7 @@ function setupEspWebSocket(server) {
 
   function broadcastToDashboard(message) {
     const json = JSON.stringify(message);
+    console.log("[WS] Gửi đến dashboard:", json);
     dashboardClients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(json, (err) => {

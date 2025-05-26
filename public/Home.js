@@ -170,6 +170,7 @@ document.querySelectorAll(".parking-spot").forEach((spot) => {
           slot: spotName,
           status: "Free",
         });
+        fetchParkingStatus();
         alert(`Đã mở khóa ô ${spotName}`);
       }
     } else {
@@ -352,7 +353,5 @@ function confirmPayment(plate) {
 // ⏱️ Tự động cập nhật sau khi DOM sẵn sàng
 window.addEventListener("DOMContentLoaded", () => {
   fetchParkingStatus();
-  setInterval(loadTickets, 5000);
-  setInterval(loadMonthTickets, 5000);
   setInterval(updateChartData, 10000);
 });
