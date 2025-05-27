@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const morgan = require("morgan"); // <-- Thêm ở đây
+const morgan = require("morgan");
 const path = require("path");
 const connectDB = require("./config/db");
 require("dotenv").config();
@@ -13,6 +13,7 @@ const qrRoutes = require("./routes/qr");
 const License_plate = require("./routes/putLicense");
 const Admin = require("./routes/Admin");
 const Authen = require("./routes/Authen");
+const Client = require("./routes/handleClient");
 
 const app = express(); // <-- Khởi tạo app TRƯỚC khi sử dụng
 const server = http.createServer(app);
@@ -31,6 +32,7 @@ app.use("/api/qr", qrRoutes);
 app.use("/api/put", License_plate);
 app.use("/api/admin", Admin);
 app.use("/api/user", Authen);
+app.use("/api/otp", Client);
 
 // Default error handlers (tuỳ chọn)
 app.use((req, res) => {
