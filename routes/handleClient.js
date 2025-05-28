@@ -20,19 +20,23 @@ function generateOTP() {
 
 router.post("/month_ticket", async (req, res) => {
   try {
-    const { email, monthTicket } = req.body;
-    if (!email || !monthTicket) {
+    const { licensePlate, car_company, owner, email, amount, start, end } =
+      req.body;
+
+    console.log(req.body);
+    if (!email) {
       return res
         .status(400)
         .json({ error: "Email và thông tin vé tháng là bắt buộc" });
     }
-    console.log(email, monthTicket);
-    const { carPlate, carBrand, ownerName, timeIn, MonthAmount } = monthTicket;
+
     const missingFields = [];
-    if (!carPlate) missingFields.push("carPlate");
-    if (!carBrand) missingFields.push("carBrand");
-    if (!ownerName) missingFields.push("ownerName");
-    if (!MonthAmount) missingFields.push("MonthAmount");
+    if (!licensePlate) missingFields.push("licensePlate");
+    if (!car_company) missingFields.push("car_company");
+    if (!owner) missingFields.push("owner");
+    if (!amount) missingFields.push("amount");
+    if (!start) missingFields.push("start");
+    if (!end) missingFields.push("end");
 
     if (missingFields.length > 0) {
       return res
@@ -40,24 +44,24 @@ router.post("/month_ticket", async (req, res) => {
         .json({ error: `Thiếu thông tin: ${missingFields.join(", ")}` });
     }
 
-    const cleanedCarPlate = carPlate.replace(/[^a-zA-Z0-9]/g, "");
-    const now = dayjs();
-    const expiredAt = now.add(MonthAmount, "month").toISOString();
+    const cleanedCarPlate = licensePlate.replace(/[^a-zA-Z0-9]/g, "");
+
+    const expiredAt = dayjs().add(amount, "month").toISOString();
 
     const otp = generateOTP();
     const expire = new Date(Date.now() + 5 * 60 * 1000);
 
     const newTicket = new otpModel({
       email,
-      otp, // nên hash nếu cần bảo mật cao hơn
+      otp,
       expiresAt: expire,
       licensePlate: cleanedCarPlate,
-      car_company: carBrand,
-      owner: ownerName,
-      timein: timeIn,
-      outdateat: expiredAt,
+      car_company,
+      owner,
+      amount,
+      start,
+      end,
     });
-
     await newTicket.save();
 
     const mailOptions = {
@@ -99,18 +103,36 @@ router.post("/verify-otp", async (req, res) => {
       car_company: otpDoc.car_company,
       email: otpDoc.email,
       owner: otpDoc.owner,
-      timein: otpDoc.timein,
-      outdateat: otpDoc.outdateat,
+      amount: otpDoc.amount,
+      start: otpDoc.start,
+      end: otpDoc.end,
     });
 
     await newTicket.save();
     await otpModel.deleteOne({ _id: otpDoc._id }); // xóa đúng bản ghi
 
-    res.status(200).json({ message: "Xác minh OTP thành công" });
+    res.status(200).json({ message: "success" });
   } catch (error) {
     console.error("Error verifying OTP:", error);
     res.status(500).json({ error: "Không thể xác minh OTP, vui lòng thử lại" });
   }
 });
 
+router.get("/history", async (req, res) => {
+  const { email } = req.query;
+  console.log(email);
+  try {
+    const tickets = await monthTicket.find({ email });
+    if (!tickets || tickets.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No tickets found for this email" });
+    }
+    console.log(tickets);
+    res.status(200).json(tickets);
+  } catch (error) {
+    console.error("Error retrieving ticket history:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 module.exports = router;

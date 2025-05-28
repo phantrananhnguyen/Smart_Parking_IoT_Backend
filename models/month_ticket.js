@@ -5,8 +5,9 @@ const ParkingSchema = new mongoose.Schema({
   owner: { type: String, required: true },
   email: { type: String, required: true },
   car_company: { type: String, required: true },
-  timein: { type: Date },
-  outdateat: { type: Date },
+  amount: { type: Number, required: true },
+  start: { type: String, required: true },
+  end: { type: String, required: true },
 });
 
 const month_ticket = mongoose.model("month_ticket", ParkingSchema);

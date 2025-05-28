@@ -8,8 +8,9 @@ const otpSchema = new mongoose.Schema({
   licensePlate: { type: String, required: true },
   owner: { type: String, required: true },
   car_company: { type: String, required: true },
-  timein: { type: Date },
-  outdateat: { type: Date },
+  amount: { type: Number, required: true },
+  start: { type: String, required: true },
+  end: { type: String, required: true },
 });
 
 // Tạo TTL index để tự động xóa OTP hết hạn
