@@ -71,20 +71,23 @@ socket.onmessage = (event) => {
     const spot = document.querySelector(`.parking-spot[data-spot="${slot}"]`);
     if (spot) {
       if (status === "inUse") {
-        spot.classList.remove("available");
         spot.classList.add("occupied");
+        spot.classList.remove("available", "locked");
+
         if (!spot.querySelector(".car-icon")) {
-          const icon = document.createElement("div");
-          icon.className = "car-icon";
-          spot.appendChild(icon);
-          updateCounts();
+          const carIcon = document.createElement("div");
+          carIcon.className = "car-icon";
+          spot.appendChild(carIcon);
         }
-      } else {
-        spot.classList.remove("occupied");
+      } else if (status === "Free") {
         spot.classList.add("available");
-        const icon = spot.querySelector(".car-icon");
-        updateCounts();
-        if (icon) icon.remove();
+        spot.classList.remove("occupied", "locked");
+
+        const carIcon = spot.querySelector(".car-icon");
+        if (carIcon) carIcon.remove();
+      } else {
+        spot.classList.remove("available", "occupied");
+        spot.classList.add("locked");
       }
     }
   }
@@ -170,7 +173,7 @@ document.querySelectorAll(".parking-spot").forEach((spot) => {
           slot: spotName,
           status: "Free",
         });
-        fetchParkingStatus();
+        //fetchParkingStatus();
         alert(`Đã mở khóa ô ${spotName}`);
       }
     } else {
@@ -325,18 +328,59 @@ function renderMonthInfor(tickets) {
     const row = document.createElement("div");
     row.classList.add("month-row");
 
+    // Kiểm tra trạng thái vé (ticket.end dạng string hoặc Date string)
+    const isExpired = new Date(ticket.end) < new Date();
+    const isPaid = ticket.isPaid === true;
+
     row.innerHTML = `
       <div>${ticket.licensePlate || "-"}</div>
       <div>${ticket.owner || "-"}</div>
       <div>${ticket.car_company || "-"}</div>
-      <div>${
-        ticket.timein ? new Date(ticket.timein).toLocaleString() : "-"
-      }</div>
-      <div>${
-        ticket.outdateat ? new Date(ticket.outdateat).toLocaleString() : "-"
-      }</div>
+      <div>${isExpired ? "Expired" : "Active"}</div>
+      <div>${isPaid ? "Đã thanh toán" : "Chưa thanh toán"}</div>
+      <div>
+        ${
+          !isPaid
+            ? `<button class="confirm-payment-btn" data-id="${ticket._id}">Xác nhận thanh toán</button>`
+            : ""
+        }
+      </div>
     `;
+
     contentDiv.appendChild(row);
+  });
+
+  // Gắn sự kiện click cho các nút xác nhận thanh toán
+  document.querySelectorAll(".confirm-payment-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      const ticketId = e.target.getAttribute("data-id");
+      if (!ticketId) return;
+
+      try {
+        const res = await fetch("/api/admin/confirm-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketId }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert("Cập nhật trạng thái thanh toán thành công!");
+
+          try {
+            await loadTicketsAndRender(); // Cập nhật lại giao diện sau khi confirm
+          } catch (err) {
+            console.error("Lỗi khi tải lại danh sách vé:", err);
+            alert("Lỗi khi tải lại danh sách vé, vui lòng thử lại sau!");
+          }
+        } else {
+          alert("Cập nhật thất bại: " + data.message);
+        }
+      } catch (error) {
+        console.error("Lỗi khi fetch cập nhật trạng thái:", error);
+        alert("Lỗi server khi cập nhật trạng thái");
+      }
+    });
   });
 }
 
@@ -348,6 +392,50 @@ function confirmPayment(plate) {
     alert(`Đã xác nhận thanh toán cho xe ${plate}`);
     location.reload();
   }
+}
+async function loadTicketsAndRender() {
+  try {
+    const res = await fetch("/api/admin/get-month-tickets"); // Đổi URL API nếu anh dùng route khác
+    const data = await res.json();
+
+    if (data.success) {
+      const tickets = data.tickets; // Đảm bảo API trả về { success: true, tickets: [...] }
+      renderMonthInfor(tickets);
+    } else {
+      throw new Error(data.message || "Lỗi khi tải danh sách vé tháng");
+    }
+  } catch (err) {
+    console.error("Lỗi loadTicketsAndRender:", err);
+    throw err; // Bắn lỗi lên để alert trong catch của confirm-payment
+  }
+}
+
+function handlePayment(ticket) {
+  console.log("Xử lý thanh toán cho:", ticket);
+
+  const { licensePlate, email, amount } = ticket;
+
+  // Gọi API tạo QR
+  fetch("/get-qr", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      carPlate: licensePlate,
+      months: amount, // Số tháng đã lưu trong DB
+      email: email, // Email đã lưu
+    }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.data && data.data.qrImage) {
+        alert("QR code đã được tạo!");
+        // Hoặc anh hiện QR lên UI:
+        // document.getElementById("qr-code").src = data.data.qrImage;
+      } else {
+        alert("Không thể tạo QR!");
+      }
+    })
+    .catch((err) => console.error("Lỗi thanh toán:", err));
 }
 
 // ⏱️ Tự động cập nhật sau khi DOM sẵn sàng

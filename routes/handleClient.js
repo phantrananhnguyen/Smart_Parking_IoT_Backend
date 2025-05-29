@@ -3,6 +3,7 @@ const router = express.Router();
 const otpModel = require("../models/otp");
 const User = require("../models/User");
 const monthTicket = require("../models/month_ticket");
+const Slot = require("../models/ParkingSlot");
 const dayjs = require("dayjs");
 const nodemailer = require("nodemailer");
 
@@ -106,11 +107,12 @@ router.post("/verify-otp", async (req, res) => {
       amount: otpDoc.amount,
       start: otpDoc.start,
       end: otpDoc.end,
+      isPaid: false,
+      createdAt: new Date(),
     });
 
     await newTicket.save();
-    await otpModel.deleteOne({ _id: otpDoc._id }); // xóa đúng bản ghi
-
+    await otpModel.deleteOne({ _id: otpDoc._id });
     res.status(200).json({ message: "success" });
   } catch (error) {
     console.error("Error verifying OTP:", error);
@@ -120,7 +122,6 @@ router.post("/verify-otp", async (req, res) => {
 
 router.get("/history", async (req, res) => {
   const { email } = req.query;
-  console.log(email);
   try {
     const tickets = await monthTicket.find({ email });
     if (!tickets || tickets.length === 0) {
@@ -128,8 +129,17 @@ router.get("/history", async (req, res) => {
         .status(404)
         .json({ message: "No tickets found for this email" });
     }
-    console.log(tickets);
     res.status(200).json(tickets);
+  } catch (error) {
+    console.error("Error retrieving ticket history:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+router.get("/status", async (req, res) => {
+  try {
+    const status = await Slot.find();
+    console.log(status);
+    res.status(200).json(status);
   } catch (error) {
     console.error("Error retrieving ticket history:", error);
     res.status(500).json({ message: "Internal server error" });

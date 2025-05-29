@@ -271,6 +271,11 @@ function setupEspWebSocket(server) {
             { status: status, updatedAt: new Date() },
             { upsert: true, new: true }
           );
+          broadcastToDashboard({
+            event: "slot_update",
+            slot,
+            status, // key đồng bộ lowercase
+          });
         }
         // Xử lý các sự kiện từ Dashboard
         if (data.event === "get_tickets") {

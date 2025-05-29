@@ -8,6 +8,8 @@ const ParkingSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   start: { type: String, required: true },
   end: { type: String, required: true },
+  isPaid: Boolean,
+  createdAt: { type: Date, default: Date.now },
 });
 
 const month_ticket = mongoose.model("month_ticket", ParkingSchema);

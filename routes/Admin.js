@@ -35,6 +35,15 @@ router.post("/register", async (req, res) => {
     res.status(500).json({ message: "Lỗi server khi tạo admin." });
   }
 });
+router.get("/get-month-tickets", async (req, res) => {
+  try {
+    const tickets = await month_Parking.find(); // Lấy hết hoặc filter tùy nhu cầu
+    res.json({ success: true, tickets });
+  } catch (error) {
+    console.error("Lỗi API get-month-tickets:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
+  }
+});
 
 router.post("/SignIn", async (req, res) => {
   const { name, password } = req.body;
@@ -132,6 +141,37 @@ router.get("/parking-status", async (req, res) => {
   } catch (error) {
     console.error("Lỗi khi lấy trạng thái bãi đỗ:", error);
     res.status(500).json({ error: "Lỗi máy chủ" });
+  }
+});
+router.post("/confirm-payment", async (req, res) => {
+  try {
+    const { ticketId } = req.body;
+    if (!ticketId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Thiếu ticketId" });
+    }
+
+    const ticket = await month_Parking.findByIdAndUpdate(
+      ticketId,
+      { isPaid: true },
+      { new: true } // Trả về document sau khi update
+    );
+
+    if (!ticket) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Không tìm thấy vé tháng" });
+    }
+
+    res.json({
+      success: true,
+      message: "Cập nhật trạng thái thanh toán thành công",
+      ticket,
+    });
+  } catch (error) {
+    console.error("Lỗi cập nhật trạng thái thanh toán:", error);
+    res.status(500).json({ success: false, message: "Lỗi server" });
   }
 });
 
