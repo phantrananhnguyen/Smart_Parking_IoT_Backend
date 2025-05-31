@@ -5,6 +5,8 @@ const User = require("../models/User");
 const monthTicket = require("../models/month_ticket");
 const Slot = require("../models/ParkingSlot");
 const dayjs = require("dayjs");
+const verifyToken = require("../middlewares/verifyToken");
+
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
@@ -19,7 +21,7 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-router.post("/month_ticket", async (req, res) => {
+router.post("/month_ticket", verifyToken, async (req, res) => {
   try {
     const { licensePlate, car_company, owner, email, amount, start, end } =
       req.body;
@@ -83,7 +85,7 @@ router.post("/month_ticket", async (req, res) => {
   }
 });
 
-router.post("/verify-otp", async (req, res) => {
+router.post("/verify-otp", verifyToken, async (req, res) => {
   const { email, otp } = req.body;
 
   try {
@@ -120,7 +122,7 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-router.get("/history", async (req, res) => {
+router.get("/history", verifyToken, async (req, res) => {
   const { email } = req.query;
   try {
     const tickets = await monthTicket.find({ email });
@@ -135,14 +137,50 @@ router.get("/history", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-router.get("/status", async (req, res) => {
+
+router.get("/status", verifyToken, async (req, res) => {
   try {
     const status = await Slot.find();
-    console.log(status);
     res.status(200).json(status);
   } catch (error) {
     console.error("Error retrieving ticket history:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+router.get("/profile", verifyToken, async (req, res) => {
+  const { email } = req.query;
+  try {
+    const profile = await User.findOne({ email });
+    const join = profile.JoinTime;
+    const tickets = await monthTicket.find({ email });
+
+    const numberOfTickets = tickets.length;
+    let latestTicketStatus = null;
+    let plate = null;
+    if (numberOfTickets > 0) {
+      // Lấy thẻ mới nhất theo thời gian bắt đầu (hoặc createdAt)
+      const latestTicket = await monthTicket
+        .findOne({ email })
+        .sort({ start: -1 });
+
+      const now = new Date();
+      const endDate = new Date(latestTicket.end);
+      plate = latestTicket.licensePlate;
+      latestTicketStatus = endDate >= now ? "Active" : "Expired";
+    }
+
+    res.status(200).json({
+      message: "Profile loaded",
+      join,
+      plate,
+      numberOfTickets,
+      latestTicketStatus,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;
