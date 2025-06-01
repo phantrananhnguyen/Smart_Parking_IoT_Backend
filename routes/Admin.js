@@ -77,21 +77,11 @@ router.post("/SignIn", async (req, res) => {
 });
 router.get("/tickets/day", async (req, res) => {
   try {
-    // Lấy đầu và cuối ngày hôm nay
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
     const tickets = await Parking.find();
-
-    // Định dạng lại cho frontend (nếu cần)
     const formatted = tickets.map((t) => ({
       plate: t.licensePlate,
       timeIn: t.checkInTime,
       timeOut: t.checkOutTime,
-      paymentStatus: t.checkOutTime ? "Chưa thanh toán" : "-", // Hoặc sửa theo logic riêng
     }));
 
     res.json(formatted);

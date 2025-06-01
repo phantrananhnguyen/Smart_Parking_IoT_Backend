@@ -289,8 +289,8 @@ function renderTickets(tickets) {
       }</div>
       <div>
         ${
-          ticket.timeOut && ticket.paymentStatus !== "Paid"
-            ? `<button class="pay-btn" onclick="confirmPayment('${ticket.plate}')">Xác nhận</button>`
+          ticket.checkOutTime
+            ? `<button class="pay-btn" onclick="confirmPayment('${ticket.licensePlate}')">Xác nhận</button>`
             : "-"
         }
       </div>

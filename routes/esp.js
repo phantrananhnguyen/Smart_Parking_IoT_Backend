@@ -109,8 +109,10 @@ function setupEspWebSocket(server) {
               licensePlate: normalizedPlate,
             });
 
-            if (isMonthVehicle) {
+            if (isMonthVehicle && isMonthVehicle.timeOut != null) {
               lastCommand = "rotate";
+              isMonthVehicle.timeIn = Date.now();
+              isMonthVehicle.timeOut = null;
               console.log("Xe tháng. Đặt lệnh: rotate");
             } else {
               const existing = await Parking.findOne({
@@ -128,6 +130,13 @@ function setupEspWebSocket(server) {
 
               lastCommand = "rotate";
             }
+            ws.send(
+              JSON.stringify({
+                event: "command_response",
+                command: "rotate",
+                target: "in",
+              })
+            );
 
             // Gửi kết quả về dashboard
             broadcastToDashboard({
@@ -178,9 +187,18 @@ function setupEspWebSocket(server) {
               licensePlate: normalizedPlate,
             });
 
-            if (isMonthVehicle) {
+            if (isMonthVehicle && isMonthVehicle.timeIn != null) {
               lastCommand = "rotate";
+              isMonthVehicle.timeOut = Date.now();
+              isMonthVehicle.timeIn = null;
               console.log("Xe tháng. Cho xe ra.");
+              ws.send(
+                JSON.stringify({
+                  event: "command_response",
+                  command: "rotate",
+                  target: "out",
+                })
+              );
             } else {
               // Tìm bản ghi check-in chưa check-out
               const existing = await Parking.findOne({
@@ -279,7 +297,7 @@ function setupEspWebSocket(server) {
         }
         // Xử lý các sự kiện từ Dashboard
         if (data.event === "get_tickets") {
-          const tickets = await Parking.find({ checkOutTime: null });
+          const tickets = await Parking.find();
           broadcastToDashboard({
             event: "tickets_data",
             tickets,
@@ -287,7 +305,7 @@ function setupEspWebSocket(server) {
         }
 
         if (data.event === "get_month_tickets") {
-          const tickets = await monthTicket.find({});
+          const tickets = await monthTicket.find({ timeOut: null });
           broadcastToDashboard({
             event: "month_tickets_data",
             tickets,
@@ -304,28 +322,12 @@ function setupEspWebSocket(server) {
 
         if (data.event === "payment_confirmed") {
           const { plate } = data;
-          const now = new Date();
-          const existing = await Parking.findOne({
-            licensePlate: plate,
-            checkOutTime: null,
-          });
+          console.log(data);
+          const existing = await Parking.findOne({ licensePlate: plate });
 
           if (existing) {
-            const durationMs = now - existing.checkInTime;
-            const durationHours = Math.ceil(durationMs / (1000 * 60 * 60));
-            const feePerHour = 5000;
-            const totalFee = durationHours * feePerHour;
-
-            // Cập nhật thông tin thanh toán trước khi xóa (nếu cần log)
-            existing.checkOutTime = now;
-            existing.fee = totalFee;
-            await existing.save();
-
-            // Xóa bản ghi sau khi thanh toán xong
-            await Parking.deleteOne({ _id: existing._id });
-
+            await Parking.deleteOne({ licensePlate: plate });
             console.log(`Xóa xe ${plate} khỏi DB sau khi thanh toán.`);
-            // Gửi lệnh rotate cho ESP
             lastCommand = "rotate";
             ws.send(
               JSON.stringify({ event: "command_response", command: "rotate" })
@@ -345,7 +347,6 @@ function setupEspWebSocket(server) {
 
   function broadcastToDashboard(message) {
     const json = JSON.stringify(message);
-    console.log("[WS] Gửi đến dashboard:", json);
     dashboardClients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(json, (err) => {
