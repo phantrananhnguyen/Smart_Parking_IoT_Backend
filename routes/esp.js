@@ -114,6 +114,13 @@ function setupEspWebSocket(server) {
               isMonthVehicle.timeIn = Date.now();
               isMonthVehicle.timeOut = null;
               console.log("Xe tháng. Đặt lệnh: rotate");
+              ws.send(
+                JSON.stringify({
+                  event: "command_response",
+                  command: "rotate",
+                  target: "in",
+                })
+              );
             } else {
               const existing = await Parking.findOne({
                 licensePlate: normalizedPlate,
@@ -124,19 +131,19 @@ function setupEspWebSocket(server) {
                 const newEntry = new Parking({ licensePlate: normalizedPlate });
                 await newEntry.save();
                 console.log("Xe ngày. Đã thêm mới vào DB.");
+                ws.send(
+                  JSON.stringify({
+                    event: "command_response",
+                    command: "rotate",
+                    target: "in",
+                  })
+                );
               } else {
                 console.log("Xe ngày. Đã có bản ghi chưa check-out.");
               }
 
               lastCommand = "rotate";
             }
-            ws.send(
-              JSON.stringify({
-                event: "command_response",
-                command: "rotate",
-                target: "in",
-              })
-            );
 
             // Gửi kết quả về dashboard
             broadcastToDashboard({
@@ -222,7 +229,24 @@ function setupEspWebSocket(server) {
                 console.log(
                   `Xe ngày. Tính phí: ${totalFee} VND (${durationHours} giờ)`
                 );
+                const qrResponse = await axios.post(
+                  "http://localhost:3000/api/qr/get-qr2",
+                  {
+                    carPlate: normalizedPlate,
+                    hours: durationHours,
+                  }
+                );
 
+                const rawQRBase64 = qrResponse.data;
+                if (rawQRBase64 != null) {
+                  console.log("have qr code");
+                }
+                ws.send(
+                  JSON.stringify({
+                    event: "payment",
+                    qrImage: rawQRBase64,
+                  })
+                );
                 // Gửi thông tin về dashboard
                 broadcastToDashboard({
                   event: "vehicle_checked_out",
@@ -330,7 +354,11 @@ function setupEspWebSocket(server) {
             console.log(`Xóa xe ${plate} khỏi DB sau khi thanh toán.`);
             lastCommand = "rotate";
             ws.send(
-              JSON.stringify({ event: "command_response", command: "rotate" })
+              JSON.stringify({
+                event: "command_response",
+                command: "rotate",
+                target: "out",
+              })
             );
           } else {
             broadcastToDashboard({
