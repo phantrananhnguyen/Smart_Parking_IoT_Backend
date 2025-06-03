@@ -104,7 +104,7 @@ router.post("/get-qr2", async (req, res) => {
 
     // Resize ảnh về 128x128 và chuyển thành grayscale raw
     const resizedBuffer = await sharp(imageBuffer)
-      .resize(180, 180)
+      .resize(150, 150)
       .greyscale() // hoặc .toColourspace("b-w") nếu bạn dùng RGB565 thì dùng .raw() không cần greyscale
       .raw()
       .toBuffer();

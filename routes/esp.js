@@ -16,6 +16,7 @@ const opts = {
   callbackReturn: "location",
   verbose: false,
 };
+let espClient = null;
 
 let lastCommand = "none";
 // Thêm hàm nhận diện có retry
@@ -75,6 +76,16 @@ function setupEspWebSocket(server) {
             });
           }
         }
+        if (data.event === "register_device" && data.type === "esp") {
+          espClient = ws;
+          console.log("[WS] ESP client registered");
+          ws.on("close", () => {
+            if (espClient === ws) {
+              espClient = null;
+              console.log("[WS] ESP client disconnected");
+            }
+          });
+        }
         // ESP gửi yêu cầu nhận diện
         if (data.event === "detection") {
           console.log("[WS] ESP yêu cầu nhận diện biển số");
@@ -114,7 +125,7 @@ function setupEspWebSocket(server) {
               isMonthVehicle.timeIn = Date.now();
               isMonthVehicle.timeOut = null;
               console.log("Xe tháng. Đặt lệnh: rotate");
-              ws.send(
+              espClient.send(
                 JSON.stringify({
                   event: "command_response",
                   command: "rotate",
@@ -131,7 +142,7 @@ function setupEspWebSocket(server) {
                 const newEntry = new Parking({ licensePlate: normalizedPlate });
                 await newEntry.save();
                 console.log("Xe ngày. Đã thêm mới vào DB.");
-                ws.send(
+                espClient.send(
                   JSON.stringify({
                     event: "command_response",
                     command: "rotate",
@@ -199,7 +210,7 @@ function setupEspWebSocket(server) {
               isMonthVehicle.timeOut = Date.now();
               isMonthVehicle.timeIn = null;
               console.log("Xe tháng. Cho xe ra.");
-              ws.send(
+              espClient.send(
                 JSON.stringify({
                   event: "command_response",
                   command: "rotate",
@@ -229,6 +240,7 @@ function setupEspWebSocket(server) {
                 console.log(
                   `Xe ngày. Tính phí: ${totalFee} VND (${durationHours} giờ)`
                 );
+
                 const qrResponse = await axios.post(
                   "http://localhost:3000/api/qr/get-qr2",
                   {
@@ -238,15 +250,20 @@ function setupEspWebSocket(server) {
                 );
 
                 const rawQRBase64 = qrResponse.data;
-                if (rawQRBase64 != null) {
-                  console.log("have qr code");
-                }
-                ws.send(
-                  JSON.stringify({
-                    event: "payment",
-                    qrImage: rawQRBase64,
-                  })
-                );
+                const chunks = splitBase64IntoChunks(rawQRBase64);
+                chunks.forEach((chunk, index) => {
+                  if (espClient && espClient.readyState === WebSocket.OPEN) {
+                    espClient.send(
+                      JSON.stringify({
+                        event: "qr_chunk",
+                        chunkIndex: index,
+                        totalChunks: chunks.length,
+                        data: chunk,
+                      })
+                    );
+                  }
+                });
+
                 // Gửi thông tin về dashboard
                 broadcastToDashboard({
                   event: "vehicle_checked_out",
@@ -353,13 +370,15 @@ function setupEspWebSocket(server) {
             await Parking.deleteOne({ licensePlate: plate });
             console.log(`Xóa xe ${plate} khỏi DB sau khi thanh toán.`);
             lastCommand = "rotate";
-            ws.send(
-              JSON.stringify({
-                event: "command_response",
-                command: "rotate",
-                target: "out",
-              })
-            );
+            if (espClient && espClient.readyState === WebSocket.OPEN) {
+              espClient.send(
+                JSON.stringify({
+                  event: "command_response",
+                  command: "rotate",
+                  target: "out",
+                })
+              );
+            }
           } else {
             broadcastToDashboard({
               event: "error",
@@ -372,7 +391,13 @@ function setupEspWebSocket(server) {
       }
     });
   });
-
+  function splitBase64IntoChunks(base64Str, chunkSize = 2000) {
+    const chunks = [];
+    for (let i = 0; i < base64Str.length; i += chunkSize) {
+      chunks.push(base64Str.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
   function broadcastToDashboard(message) {
     const json = JSON.stringify(message);
     dashboardClients.forEach((client) => {
