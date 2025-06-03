@@ -120,7 +120,7 @@ function setupEspWebSocket(server) {
               licensePlate: normalizedPlate,
             });
 
-            if (isMonthVehicle && isMonthVehicle.timeOut != null) {
+            if (isMonthVehicle) {
               lastCommand = "rotate";
               isMonthVehicle.timeIn = Date.now();
               isMonthVehicle.timeOut = null;
@@ -200,12 +200,11 @@ function setupEspWebSocket(server) {
 
             console.log("Biển số nhận diện (ra):", normalizedPlate);
 
-            // Kiểm tra nếu là xe tháng
             const isMonthVehicle = await monthTicket.findOne({
               licensePlate: normalizedPlate,
             });
 
-            if (isMonthVehicle && isMonthVehicle.timeIn != null) {
+            if (isMonthVehicle) {
               lastCommand = "rotate";
               isMonthVehicle.timeOut = Date.now();
               isMonthVehicle.timeIn = null;
@@ -240,29 +239,6 @@ function setupEspWebSocket(server) {
                 console.log(
                   `Xe ngày. Tính phí: ${totalFee} VND (${durationHours} giờ)`
                 );
-
-                const qrResponse = await axios.post(
-                  "http://localhost:3000/api/qr/get-qr2",
-                  {
-                    carPlate: normalizedPlate,
-                    hours: durationHours,
-                  }
-                );
-
-                const rawQRBase64 = qrResponse.data;
-                const chunks = splitBase64IntoChunks(rawQRBase64);
-                chunks.forEach((chunk, index) => {
-                  if (espClient && espClient.readyState === WebSocket.OPEN) {
-                    espClient.send(
-                      JSON.stringify({
-                        event: "qr_chunk",
-                        chunkIndex: index,
-                        totalChunks: chunks.length,
-                        data: chunk,
-                      })
-                    );
-                  }
-                });
 
                 // Gửi thông tin về dashboard
                 broadcastToDashboard({
