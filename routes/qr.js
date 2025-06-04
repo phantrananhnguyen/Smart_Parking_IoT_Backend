@@ -14,7 +14,7 @@ const accountNo = "9367521391";
 const accountName = "CONG TY GUI XE ABC";
 const bankId = "970436";
 
-router.post("/get-qr", async (req, res) => {
+router.post("/get-qr",verifyToken, async (req, res) => {
   try {
     const { carPlate, months, email } = req.body;
 
